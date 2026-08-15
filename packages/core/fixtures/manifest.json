@@ -1,0 +1,5 @@
+{
+  "https://www.amazon.in/dp/B0IPHONE15": { "html": "amazon/iphone.html", "markdown": "amazon/iphone.md" },
+  "https://www.amazon.in/dp/B0OOS0001": { "html": "amazon/oos.html" },
+  "https://www.amazon.in/dp/B0PRICEERR": { "html": "amazon/price-error.html" }
+}

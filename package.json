@@ -1,0 +1,22 @@
+{
+  "name": "dropwatch",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal India price-drop intelligence agent — card-aware effective pricing, cross-platform lowest, Slack alerts.",
+  "packageManager": "pnpm@11.1.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "worker": "pnpm --filter @dropwatch/worker start --",
+    "check-all": "pnpm --filter @dropwatch/worker start -- check-all",
+    "web:dev": "pnpm --filter @dropwatch/web dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.6.3"
+  }
+}

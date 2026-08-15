@@ -1,0 +1,33 @@
+name: keepalive
+
+# Daily 06:00 UTC. DB ping (keeps Supabase free tier warm + GitHub crons from
+# auto-disabling after 60 idle days) and a watchdog that Slacks if no successful
+# check has happened in >26h.
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DRY_RUN: "0"
+      LLM_PROVIDER: mock
+      OPENAI_API_KEY: "unused"
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @dropwatch/worker start -- health
+      - run: pnpm --filter @dropwatch/worker start -- watchdog

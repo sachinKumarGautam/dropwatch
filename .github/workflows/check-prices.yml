@@ -1,0 +1,66 @@
+name: check-prices
+
+# 6 runs/day so per-app intervals down to ~4h are honored; the per-product frequency
+# gate decides who actually gets scraped (daily-default URLs still cost ~1 scrape/day).
+# 03:30 UTC = 09:00 IST is the anchor run that also sends the digest.
+on:
+  schedule:
+    - cron: "30 3 * * *"
+    - cron: "30 7,11,15,19,23 * * *"
+  workflow_dispatch:
+    inputs:
+      product_id:
+        description: "Check a single product (leave blank for all)"
+        required: false
+        type: string
+
+concurrency:
+  group: check-prices
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DRY_RUN: "0"
+      MINIMAL_LLM: "1"
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'openai' }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
+      LLM_REASONING_MODEL: ${{ vars.LLM_REASONING_MODEL || 'gpt-4o-mini' }}
+      DEFAULT_PINCODE: ${{ vars.DEFAULT_PINCODE }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+      SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium
+      - run: pnpm exec playwright install --with-deps chromium
+
+      - name: Check prices
+        run: |
+          if [ -n "${{ github.event.inputs.product_id }}" ]; then
+            pnpm --filter @dropwatch/worker start -- check "${{ github.event.inputs.product_id }}"
+          else
+            pnpm --filter @dropwatch/worker start -- check-all
+          fi
+
+      # digest only on the 03:30 UTC run (09:00 IST)
+      - name: Daily digest
+        if: github.event.schedule == '30 3 * * *'
+        run: pnpm --filter @dropwatch/worker start -- digest

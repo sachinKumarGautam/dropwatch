@@ -37,6 +37,9 @@ export async function sweep(deps: Deps, onlyProductId?: string): Promise<SweepSu
   }
   targets = targets
     .filter((p) => now().getTime() - (staleness.get(p.id) ?? 0) >= STALE_MS)
+    // Without LLM adjudication, auto-matching needs an EAN or model number to match on.
+    // Skip the rest so we don't waste SerpApi quota on products we can't confirm.
+    .filter((p) => !deps.cfg.minimalLlm || !!p.ean || !!p.modelNumber)
     .sort((a, b) => (staleness.get(a.id) ?? 0) - (staleness.get(b.id) ?? 0));
 
   let matched = 0;

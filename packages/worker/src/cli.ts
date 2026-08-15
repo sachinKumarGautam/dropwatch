@@ -36,7 +36,10 @@ function has(args: string[], name: string): boolean {
 const log = (o: unknown) => console.log(JSON.stringify(o));
 
 async function main() {
-  const [, , command, ...args] = process.argv;
+  const rawArgs = process.argv.slice(2);
+  // `pnpm run start -- check <id>` forwards the `--` separator as a literal arg.
+  if (rawArgs[0] === "--") rawArgs.shift();
+  const [command, ...args] = rawArgs;
   if (has(args, "dry-run")) process.env.DRY_RUN = "1";
 
   const cfg = loadConfig();

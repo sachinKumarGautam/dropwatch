@@ -37,6 +37,7 @@ const toCollection = (r: any): CollectionRow => ({
   id: r.id,
   name: r.name,
   checkIntervalMinutes: r.check_interval_minutes,
+  expiresAt: r.expires_at ?? null,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -61,6 +62,8 @@ const toProduct = (r: any): TrackedProductRow => ({
   checkIntervalMinutes: r.check_interval_minutes,
   lastCheckedAt: r.last_checked_at,
   requestedCheckAt: r.requested_check_at,
+  expiresAt: r.expires_at ?? null,
+  deletedAt: r.deleted_at ?? null,
   paused: r.paused,
   muteUntil: r.mute_until,
   snoozeUntil: r.snooze_until,
@@ -88,6 +91,8 @@ const productPatch = (p: Partial<TrackedProductRow>): Record<string, unknown> =>
     checkIntervalMinutes: "check_interval_minutes",
     lastCheckedAt: "last_checked_at",
     requestedCheckAt: "requested_check_at",
+    expiresAt: "expires_at",
+    deletedAt: "deleted_at",
     paused: "paused",
     muteUntil: "mute_until",
     snoozeUntil: "snooze_until",
@@ -225,7 +230,7 @@ export function createDb(cfg: { url: string; serviceRoleKey: string }): Db {
       return rows.map(toCollection);
     },
     async getTrackedProducts(f) {
-      let q = sb.from("tracked_products").select("*");
+      let q = sb.from("tracked_products").select("*").is("deleted_at", null);
       if (f?.activeOnly) q = q.eq("paused", false);
       const rows = must(await q, "getTrackedProducts") as any[];
       return rows.map(toProduct);

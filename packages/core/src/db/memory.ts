@@ -66,7 +66,9 @@ export function createMemoryDb(opts: MemoryDbOptions = {}): Db {
       return [...collections];
     },
     async getTrackedProducts(f) {
-      return products.filter((p) => (f?.activeOnly ? !p.paused : true));
+      return products.filter(
+        (p) => p.deletedAt == null && (f?.activeOnly ? !p.paused : true),
+      );
     },
     async getTrackedProduct(id) {
       return products.find((p) => p.id === id) ?? null;
@@ -93,6 +95,8 @@ export function createMemoryDb(opts: MemoryDbOptions = {}): Db {
         checkIntervalMinutes: row.checkIntervalMinutes ?? null,
         lastCheckedAt: null,
         requestedCheckAt: null,
+        expiresAt: null,
+        deletedAt: null,
         paused: false,
         muteUntil: null,
         snoozeUntil: null,

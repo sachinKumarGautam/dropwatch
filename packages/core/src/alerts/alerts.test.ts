@@ -45,7 +45,7 @@ function seedProduct(): TrackedProductRow[] {
       imageUrl: null, category: null, unitCount: null, unitLabel: null, targetPrice: null,
       baselinePrice: null,
       pincode: null, collectionId: null, checkIntervalMinutes: null, lastCheckedAt: null,
-      requestedCheckAt: null, paused: false, muteUntil: null, snoozeUntil: null,
+      requestedCheckAt: null, expiresAt: null, deletedAt: null, paused: false, muteUntil: null, snoozeUntil: null,
       consecutiveFailures: 0, lastError: null, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
     },
   ];

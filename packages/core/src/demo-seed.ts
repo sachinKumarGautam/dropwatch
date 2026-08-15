@@ -57,6 +57,8 @@ export function demoSeed(now: Date): SeedData {
     checkIntervalMinutes: null,
     lastCheckedAt: null,
     requestedCheckAt: null,
+    expiresAt: null,
+    deletedAt: null,
     paused: false,
     muteUntil: null,
     snoozeUntil: null,

@@ -278,6 +278,7 @@ export interface CollectionRow {
   id: string;
   name: string;
   checkIntervalMinutes: number;
+  expiresAt: IsoTs | null;
   createdAt: IsoTs;
   updatedAt: IsoTs;
 }
@@ -302,6 +303,8 @@ export interface TrackedProductRow {
   checkIntervalMinutes: number | null;
   lastCheckedAt: IsoTs | null;
   requestedCheckAt: IsoTs | null;
+  expiresAt: IsoTs | null;
+  deletedAt: IsoTs | null;
   paused: boolean;
   muteUntil: IsoTs | null;
   snoozeUntil: IsoTs | null;

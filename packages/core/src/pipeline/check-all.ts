@@ -8,6 +8,7 @@ import { checkProduct, type CheckSummary } from "./check.js";
 import { buildHealthBlocks } from "../alerts/blocks.js";
 import { sendHealthOnce } from "../alerts/ops.js";
 import { isDue } from "./gate.js";
+import { expireProducts } from "./expire.js";
 
 async function runLimited<T, R>(
   items: T[],
@@ -36,6 +37,7 @@ export interface CheckAllSummary {
 }
 
 export async function checkAll(deps: Deps, concurrency = 2): Promise<CheckAllSummary> {
+  await expireProducts(deps); // move past-end-date products to Trash first
   const [products, collections] = await Promise.all([
     deps.db.getTrackedProducts({ activeOnly: true }),
     deps.db.getCollections(),

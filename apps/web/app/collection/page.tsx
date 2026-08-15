@@ -3,7 +3,9 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { formatINR, timeAgo, ageDays, freqLabel, FREQ_OPTIONS, PLATFORM_LABEL } from "@/lib/format";
+import { formatINR, timeAgo, ageDays, freqLabel, PLATFORM_LABEL } from "@/lib/format";
+import { FrequencyPicker } from "@/components/FrequencyPicker";
+import { TargetPicker } from "@/components/TargetPicker";
 import type { CollectionRow, ProductRow, StatsRow } from "@/lib/types";
 
 function detectPlatform(url: string): string {
@@ -14,11 +16,14 @@ function detectPlatform(url: string): string {
   if (/samsung\.com\/in/i.test(url)) return "samsung_in";
   return "other";
 }
+const dateVal = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : "");
+const toEndIso = (d: string) => (d ? new Date(d + "T23:59:59+05:30").toISOString() : null);
+const daysLeft = (iso: string | null) => (iso ? Math.ceil((Date.parse(iso) - Date.now()) / 86_400_000) : null);
 
 function CollectionInner() {
   const params = useSearchParams();
   const router = useRouter();
-  const id = params.get("id"); // null → Ungrouped
+  const id = params.get("id");
   const [col, setCol] = useState<CollectionRow | null>(null);
   const [allCols, setAllCols] = useState<CollectionRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -27,11 +32,12 @@ function CollectionInner() {
   const [err, setErr] = useState<string | null>(null);
   const [url, setUrl] = useState("");
   const [target, setTarget] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       const sb = supabase();
-      const pq = sb.from("tracked_products").select("*").order("created_at", { ascending: false });
+      const pq = sb.from("tracked_products").select("*").is("deleted_at", null).order("created_at", { ascending: false });
       const [pr, st, cs] = await Promise.all([
         id ? pq.eq("collection_id", id) : pq.is("collection_id", null),
         sb.from("v_product_stats").select("*"),
@@ -49,50 +55,69 @@ function CollectionInner() {
   }, [id]);
   useEffect(() => { void load(); }, [load]);
 
+  const appInterval = col?.check_interval_minutes ?? 1440;
+  const effInterval = (p: ProductRow) => p.check_interval_minutes ?? (id ? appInterval : 1440);
+
   async function addUrl() {
     if (!url.trim()) return;
-    const canonical = url.split("?")[0]!;
-    const { error } = await supabase().from("tracked_products").insert({
+    const sb = supabase();
+    const canonical = (url.split("?")[0] ?? url).trim();
+    const targetPaise = target ? Math.round(Number(target) * 100) : null;
+    // duplicate check (includes trashed rows — the unique index covers them)
+    const existing = (await sb.from("tracked_products").select("id, deleted_at, collection_id, title").eq("canonical_url", canonical)).data as
+      | { id: string; deleted_at: string | null; collection_id: string | null }[] | null;
+    const dup = existing?.[0];
+    if (dup && !dup.deleted_at) {
+      alert("You're already tracking this URL" + (dup.collection_id === id ? " in this app." : " (in another app)."));
+      return;
+    }
+    if (dup && dup.deleted_at) {
+      if (!confirm("This URL is in Trash. Restore it here?")) return;
+      await sb.from("tracked_products").update({ deleted_at: null, collection_id: id, target_price: targetPaise }).eq("id", dup.id);
+      setUrl(""); setTarget(""); await load();
+      return;
+    }
+    const { error } = await sb.from("tracked_products").insert({
       url: url.trim(), canonical_url: canonical, platform: detectPlatform(url),
-      collection_id: id, target_price: target ? Math.round(Number(target) * 100) : null,
+      collection_id: id, target_price: targetPaise,
     });
-    if (error) { alert(error.message); return; }
+    if (error) { alert(/duplicate|unique/i.test(error.message) ? "You're already tracking this URL." : error.message); return; }
     setUrl(""); setTarget(""); await load();
   }
-  async function delUrl(pid: string) {
-    if (!confirm("Delete this URL and its history?")) return;
-    await supabase().from("tracked_products").delete().eq("id", pid); await load();
+  async function patch(pid: string, p: Record<string, unknown>) {
+    const { error } = await supabase().from("tracked_products").update(p).eq("id", pid);
+    if (error) alert(error.message);
+    await load();
+  }
+  async function softDelete(pid: string) {
+    if (!confirm("Move this URL to Trash? (You can restore it from Archive.)")) return;
+    await patch(pid, { deleted_at: new Date().toISOString() });
   }
   async function checkNow(pid: string) {
-    await supabase().from("tracked_products").update({ requested_check_at: new Date().toISOString() }).eq("id", pid);
-    alert("Queued — it will be checked within a few hours on the next run.");
+    await patch(pid, { requested_check_at: new Date().toISOString() });
+    alert("Queued — checked within a few hours on the next run.");
   }
-  async function setTargetPrice(p: ProductRow) {
-    const v = prompt("Target ₹ (effective). Blank to clear:", p.target_price ? String(p.target_price / 100) : "");
-    if (v === null) return;
-    await supabase().from("tracked_products").update({ target_price: v ? Math.round(Number(v) * 100) : null }).eq("id", p.id); await load();
-  }
-  async function overrideFreq(p: ProductRow) {
-    const v = prompt("Per-URL check interval in minutes (blank = inherit app):", p.check_interval_minutes ? String(p.check_interval_minutes) : "");
-    if (v === null) return;
-    await supabase().from("tracked_products").update({ check_interval_minutes: v ? Math.max(30, Number(v)) : null }).eq("id", p.id); await load();
-  }
-  async function moveTo(pid: string, cid: string) {
-    await supabase().from("tracked_products").update({ collection_id: cid || null }).eq("id", pid); await load();
-  }
-  async function setFrequency(minutes: number) {
+  async function setAppFreq(minutes: number | null) {
     if (!id) return;
-    await supabase().from("collections").update({ check_interval_minutes: minutes }).eq("id", id); await load();
+    await supabase().from("collections").update({ check_interval_minutes: minutes ?? 1440 }).eq("id", id);
+    await load();
+  }
+  async function setAppEnd(d: string) {
+    if (!id) return;
+    await supabase().from("collections").update({ expires_at: toEndIso(d) }).eq("id", id);
+    await load();
   }
   async function rename() {
     if (!col) return;
     const v = prompt("Rename app:", col.name);
     if (!v?.trim()) return;
-    await supabase().from("collections").update({ name: v.trim() }).eq("id", col.id); await load();
+    await supabase().from("collections").update({ name: v.trim() }).eq("id", col.id);
+    await load();
   }
   async function deleteApp() {
     if (!col) return;
-    if (!confirm(`Delete "${col.name}" and ALL ${products.length} URLs in it? This cannot be undone.`)) return;
+    if (!confirm(`Delete app "${col.name}"? Its ${products.length} URLs move to Trash (restorable).`)) return;
+    await supabase().from("tracked_products").update({ deleted_at: new Date().toISOString() }).eq("collection_id", col.id);
     await supabase().from("collections").delete().eq("id", col.id);
     router.push("/");
   }
@@ -101,26 +126,30 @@ function CollectionInner() {
 
   return (
     <>
-      <div style={{ marginBottom: 8 }}><Link href="/">← Apps</Link></div>
+      <div style={{ marginBottom: 8 }}><Link href="/">← Apps</Link> · <Link href="/archive">Trash</Link></div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0 }} onClick={id ? rename : undefined} title={id ? "tap to rename" : ""}>{title}</h1>
+        <h1 style={{ margin: 0, cursor: id ? "pointer" : "default" }} onClick={id ? rename : undefined} title={id ? "tap to rename" : ""}>{title}</h1>
         {id && <button className="btn ghost danger" style={{ marginLeft: "auto" }} onClick={deleteApp}>Delete app</button>}
       </div>
 
       {id && col && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0 20px" }}>
-          <span className="sub" style={{ margin: 0, alignSelf: "center", marginRight: 4 }}>Frequency:</span>
-          {FREQ_OPTIONS.map((o) => (
-            <button key={o.minutes}
-              className={`btn ${col.check_interval_minutes === o.minutes ? "primary" : "ghost"}`}
-              onClick={() => setFrequency(o.minutes)}>{o.label}</button>
-          ))}
+        <div className="card" style={{ padding: 14, margin: "14px 0 20px" }}>
+          <div className="settingrow">
+            <span className="settinglabel">Check frequency</span>
+            <FrequencyPicker value={col.check_interval_minutes} onChange={setAppFreq} />
+          </div>
+          <div className="settingrow">
+            <span className="settinglabel">End date (auto-move to Trash)</span>
+            <input type="date" value={dateVal(col.expires_at)} onChange={(e) => setAppEnd(e.target.value)} />
+            {col.expires_at && <span className="chip warn">{daysLeft(col.expires_at)}d left</span>}
+            {col.expires_at && <button className="btn ghost" onClick={() => setAppEnd("")}>clear</button>}
+          </div>
         </div>
       )}
 
       <div className="formrow">
         <input className="url" placeholder="Paste a product URL to track in this app" value={url} onChange={(e) => setUrl(e.target.value)} />
-        <input style={{ width: 120 }} placeholder="Target ₹" value={target} onChange={(e) => setTarget(e.target.value)} />
+        <input style={{ width: 110 }} placeholder="Target ₹" value={target} onChange={(e) => setTarget(e.target.value)} />
         <button className="btn primary" onClick={addUrl} disabled={!url.trim()}>Add URL</button>
       </div>
 
@@ -132,34 +161,61 @@ function CollectionInner() {
           {products.map((p) => {
             const s = stats[p.id];
             const cur = s?.current_effective ?? s?.current_price ?? null;
+            const open = editing === p.id;
+            const isSearch = /\/s\?|\/s\/|[?&]k=/.test(p.url);
             return (
-              <div className="row" key={p.id} style={{ opacity: p.paused ? 0.55 : 1 }}>
-                <div className="grow">
-                  <div className="title"><Link href={`/product/?id=${p.id}`}>{p.title ?? p.url}</Link></div>
-                  <div style={{ marginTop: 4, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <span className="chip">{PLATFORM_LABEL[p.platform] ?? p.platform}</span>
-                    <span className="chip">{ageDays(p.created_at)}</span>
-                    {p.check_interval_minutes && <span className="chip">{freqLabel(p.check_interval_minutes)}</span>}
-                    {p.consecutive_failures > 0 && <span className="chip bad">{p.consecutive_failures} fails</span>}
-                    {p.last_checked_at && <span className="chip">checked {timeAgo(p.last_checked_at)}</span>}
-                    {p.target_price && <span className="chip">target {formatINR(p.target_price)}</span>}
+              <div key={p.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                <div className="row" style={{ borderBottom: "none" }}>
+                  <div className="grow">
+                    <div className="title"><Link href={`/product/?id=${p.id}`}>{p.title ?? p.url}</Link></div>
+                    <div style={{ marginTop: 4, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <span className="chip">{PLATFORM_LABEL[p.platform] ?? p.platform}</span>
+                      <span className="chip">{ageDays(p.created_at)}</span>
+                      <span className="chip">⏱ {freqLabel(effInterval(p))}{p.check_interval_minutes ? "" : " (app)"}</span>
+                      {p.expires_at && <span className="chip warn">ends in {daysLeft(p.expires_at)}d</span>}
+                      {isSearch && <span className="chip bad">search page — use a product URL</span>}
+                      {p.consecutive_failures > 0 && <span className="chip bad">{p.consecutive_failures} fails</span>}
+                      {p.last_checked_at && <span className="chip">checked {timeAgo(p.last_checked_at)}</span>}
+                      {p.target_price && <span className="chip">target {formatINR(p.target_price)}</span>}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", minWidth: 90 }}><div className="price eff num">{formatINR(cur)}</div></div>
+                  <div className="rowactions">
+                    <button className="btn ghost" onClick={() => checkNow(p.id)}>Check</button>
+                    <button className="btn ghost" onClick={() => setEditing(open ? null : p.id)}>{open ? "Close" : "Edit"}</button>
+                    <button className="btn ghost danger" onClick={() => softDelete(p.id)}>Delete</button>
                   </div>
                 </div>
-                <div style={{ textAlign: "right", minWidth: 96 }}>
-                  <div className="price eff num">{formatINR(cur)}</div>
-                </div>
-                <div className="rowactions">
-                  <button className="btn ghost" onClick={() => checkNow(p.id)}>Check</button>
-                  <button className="btn ghost" onClick={() => setTargetPrice(p)}>Target</button>
-                  <button className="btn ghost" onClick={() => overrideFreq(p)}>Freq</button>
-                  {!id && (
-                    <select defaultValue="" onChange={(e) => moveTo(p.id, e.target.value)} style={{ fontSize: 12, padding: "5px 8px" }}>
-                      <option value="" disabled>Move to…</option>
-                      {allCols.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  )}
-                  <button className="btn ghost danger" onClick={() => delUrl(p.id)}>Delete</button>
-                </div>
+                {open && (
+                  <div style={{ padding: "0 18px 16px", display: "grid", gap: 12 }}>
+                    <div className="settingrow">
+                      <span className="settinglabel">Frequency</span>
+                      <FrequencyPicker value={p.check_interval_minutes} allowInherit onChange={(m) => patch(p.id, { check_interval_minutes: m })} />
+                    </div>
+                    <div className="settingrow">
+                      <span className="settinglabel">End date</span>
+                      <input type="date" value={dateVal(p.expires_at)} onChange={(e) => patch(p.id, { expires_at: toEndIso(e.target.value) })} />
+                      {p.expires_at && <button className="btn ghost" onClick={() => patch(p.id, { expires_at: null })}>clear</button>}
+                    </div>
+                    <div className="settingrow">
+                      <span className="settinglabel">Target</span>
+                      <TargetPicker
+                        value={p.target_price}
+                        reference={p.baseline_price ?? s?.current_effective ?? s?.current_price ?? null}
+                        onChange={(paise) => patch(p.id, { target_price: paise })}
+                      />
+                    </div>
+                    {!id && (
+                      <div className="settingrow">
+                        <span className="settinglabel">Move to app</span>
+                        <select defaultValue="" onChange={(e) => patch(p.id, { collection_id: e.target.value || null })}>
+                          <option value="" disabled>Choose…</option>
+                          {allCols.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -170,9 +226,5 @@ function CollectionInner() {
 }
 
 export default function CollectionPage() {
-  return (
-    <Suspense fallback={<div className="empty">Loading…</div>}>
-      <CollectionInner />
-    </Suspense>
-  );
+  return <Suspense fallback={<div className="empty">Loading…</div>}><CollectionInner /></Suspense>;
 }

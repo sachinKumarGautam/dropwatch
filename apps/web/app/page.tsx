@@ -18,7 +18,7 @@ export default function AppsHome() {
       const sb = supabase();
       const [c, p] = await Promise.all([
         sb.from("collections").select("*").order("created_at", { ascending: false }),
-        sb.from("tracked_products").select("id, collection_id"),
+        sb.from("tracked_products").select("id, collection_id").is("deleted_at", null),
       ]);
       if (c.error) throw c.error;
       if (p.error) throw p.error;

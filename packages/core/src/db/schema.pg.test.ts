@@ -31,6 +31,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(resolve(MIG, "0002_rls.sql"), "utf8"));
   await db.exec(readFileSync(resolve(MIG, "0003_apps_and_auth.sql"), "utf8"));
   await db.exec(readFileSync(resolve(MIG, "0004_baseline.sql"), "utf8"));
+  await db.exec(readFileSync(resolve(MIG, "0005_expiry_and_trash.sql"), "utf8"));
 });
 
 describe("SQL migrations + v_product_stats", () => {
@@ -91,12 +92,13 @@ describe("SQL migrations + v_product_stats", () => {
        values ($1, 100000, 100000, true, 1, 'jsonld')`,
       [prod.rows[0]!.id],
     );
-    // deleting the collection cascades to products and their history
+    // deleting the collection now SET NULLs the product (kept, not destroyed)
     await db.query(`delete from collections where id = $1`, [cid]);
-    const left = await db.query<{ n: number }>(
-      `select count(*)::int n from tracked_products where id = $1`,
+    const left = await db.query<{ n: number; collection_id: string | null }>(
+      `select count(*)::int n, max(collection_id::text) collection_id from tracked_products where id = $1`,
       [prod.rows[0]!.id],
     );
-    expect(left.rows[0]!.n).toBe(0);
+    expect(left.rows[0]!.n).toBe(1);
+    expect(left.rows[0]!.collection_id).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import { createDeps } from "../deps.js";
 import { checkAll } from "./check-all.js";
 import { sweep } from "./sweep.js";
 import { watchdog } from "./watchdog.js";
+import { expireProducts } from "./expire.js";
 import { sendHealthOnce } from "../alerts/ops.js";
 import { createMemoryDb } from "../db/memory.js";
 import { createCapturingSlack } from "../alerts/slack.js";
@@ -65,6 +66,21 @@ describe("watchdog", () => {
     const r = await watchdog(deps);
     expect(r.stale).toBe(false);
     expect(r.alerted).toBe(false);
+  });
+});
+
+describe("expiry (auto-trash past end date)", () => {
+  it("soft-deletes a product past its end date, keeping it in the DB", async () => {
+    const seed = demoSeed(NOW);
+    seed.products![0]!.expiresAt = new Date(NOW.getTime() - 86_400_000).toISOString();
+    const db = createMemoryDb({ now: () => NOW, seed });
+    const deps = createDeps(loadConfig({ DRY_RUN: "1" }), { now: () => NOW, db, slack: createCapturingSlack() });
+    const r = await expireProducts(deps);
+    expect(r.expired).toContain(DEMO_PRODUCT_ID);
+    const active = await deps.db.getTrackedProducts();
+    expect(active.find((p) => p.id === DEMO_PRODUCT_ID)).toBeUndefined(); // gone from active
+    const row = await deps.db.getTrackedProduct(DEMO_PRODUCT_ID);
+    expect(row?.deletedAt).not.toBeNull(); // but still in the DB (Trash)
   });
 });
 

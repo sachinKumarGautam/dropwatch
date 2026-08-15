@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { formatINR, timeAgo, ageDays, freqLabel, PLATFORM_LABEL } from "@/lib/format";
 import { FrequencyPicker } from "@/components/FrequencyPicker";
 import { TargetPicker } from "@/components/TargetPicker";
+import { Sparkline } from "@/components/Sparkline";
 import type { CollectionRow, ProductRow, StatsRow } from "@/lib/types";
 
 function detectPlatform(url: string): string {
@@ -28,6 +29,7 @@ function CollectionInner() {
   const [allCols, setAllCols] = useState<CollectionRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [stats, setStats] = useState<Record<string, StatsRow>>({});
+  const [spark, setSpark] = useState<Record<string, number[]>>({});
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [url, setUrl] = useState("");
@@ -44,12 +46,27 @@ function CollectionInner() {
         sb.from("collections").select("*").order("created_at"),
       ]);
       if (pr.error) throw pr.error;
-      setProducts((pr.data as ProductRow[]) ?? []);
+      const prods = (pr.data as ProductRow[]) ?? [];
+      setProducts(prods);
       const sMap: Record<string, StatsRow> = {};
       for (const s of (st.data as StatsRow[]) ?? []) sMap[s.product_id] = s;
       setStats(sMap);
       setAllCols((cs.data as CollectionRow[]) ?? []);
       setCol(id ? ((cs.data as CollectionRow[]) ?? []).find((c) => c.id === id) ?? null : null);
+
+      const ids = prods.map((p) => p.id);
+      if (ids.length) {
+        const hist = await sb
+          .from("price_history")
+          .select("product_id, price, effective_instant, checked_at")
+          .in("product_id", ids)
+          .order("checked_at", { ascending: true })
+          .limit(3000);
+        const spMap: Record<string, number[]> = {};
+        for (const row of (hist.data as { product_id: string; price: number; effective_instant: number | null }[]) ?? [])
+          (spMap[row.product_id] ??= []).push(row.effective_instant ?? row.price);
+        setSpark(spMap);
+      } else setSpark({});
     } catch (e) { setErr((e as Error).message); }
     finally { setLoading(false); }
   }, [id]);
@@ -179,6 +196,11 @@ function CollectionInner() {
                       {p.target_price && <span className="chip">target {formatINR(p.target_price)}</span>}
                     </div>
                   </div>
+                  {(spark[p.id]?.length ?? 0) >= 2 && (
+                    <Link href={`/product/?id=${p.id}`} title="Open full price chart" style={{ opacity: p.paused ? 0.5 : 1 }}>
+                      <Sparkline values={(spark[p.id] ?? []).slice(-40)} width={100} height={30} />
+                    </Link>
+                  )}
                   <div style={{ textAlign: "right", minWidth: 90 }}><div className="price eff num">{formatINR(cur)}</div></div>
                   <div className="rowactions">
                     <button className="btn ghost" onClick={() => checkNow(p.id)}>Check</button>

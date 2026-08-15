@@ -82,6 +82,17 @@ export function AlertExplain({ alert: a, appName }: { alert: AlertRow; appName?:
             </div>
           )}
 
+          {ctx?.competitors && ctx.competitors.length > 0 && (
+            <div>
+              <div className="explain-h">Across other sites</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {ctx.competitors.map((c, i) => (
+                  <span key={i} className="chip">{c.merchant}: <b style={{ color: "var(--text)" }}>{c.price != null ? formatINR(c.price) : "—"}</b></span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {a.suppressed_reason && (
             <div style={{ color: "var(--warn)", fontSize: 12 }}>Not sent to Slack — reason: {a.suppressed_reason}</div>
           )}

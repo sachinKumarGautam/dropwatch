@@ -85,6 +85,21 @@ export function buildDealBlocks(ev: AlertEvent): SlackPayload {
       type: "section",
       text: { type: "mrkdwn", text: "*Effective price by path*\n" + ranking },
     });
+
+  const comps = (ev.competitors ?? []).filter((c) => c.price != null);
+  if (comps.length) {
+    const min = Math.min(...comps.map((c) => c.price!));
+    const lines = comps
+      .slice(0, 5)
+      .map((c) => `${formatINR(c.price!)} — ${c.merchant}${c.price === min ? "  ⟵ lowest" : ""}`)
+      .join("\n");
+    const verdict =
+      b.sticker <= min ? "Your tracked link is the lowest." : `Cheaper elsewhere: ${formatINR(min)}.`;
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: `*Across other sites* — ${verdict}\n${lines}` },
+    });
+  }
   blocks.push({
     type: "context",
     elements: [{ type: "mrkdwn", text: contextParts.join("  ·  ") }],

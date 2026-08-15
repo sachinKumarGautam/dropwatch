@@ -85,6 +85,7 @@ export interface AlertRow {
   context: {
     price: number; mrp: number | null; median90d: number | null; samples90d: number;
     baseline?: number | null; effective?: number | null;
+    competitors?: { merchant: string; price: number | null }[];
   } | null;
   signals: { kind: string; detail: string }[] | null;
   suppressed_reason: string | null;

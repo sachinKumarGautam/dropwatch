@@ -23,6 +23,7 @@ async function toEvent(deps: Deps, row: AlertRow): Promise<AlertEvent> {
     bestCardNotHeld: null,
     festivalNote: null,
     baseline: row.context?.baseline ?? null,
+    competitors: [],
     productTitle: product?.title ?? "Product",
     url: product?.url ?? "",
     createdAt: row.createdAt,

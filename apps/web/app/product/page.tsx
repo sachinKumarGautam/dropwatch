@@ -10,6 +10,15 @@ import { CompetitorTable } from "@/components/CompetitorTable";
 import { AlertExplain } from "@/components/AlertExplain";
 import type { ProductRow, PricePointRow, OfferRow, CardRow, CompetitorRow, StatsRow, AlertRow } from "@/lib/types";
 
+function detectPlatform(url: string): string {
+  if (/amazon\.in/i.test(url)) return "amazon_in";
+  if (/flipkart\.com/i.test(url)) return "flipkart";
+  if (/croma\.com/i.test(url)) return "croma";
+  if (/nykaa\.com/i.test(url)) return "nykaa";
+  if (/samsung\.com\/in/i.test(url)) return "samsung_in";
+  return "other";
+}
+
 function ProductInner() {
   const id = useSearchParams().get("id") ?? "";
   const [product, setProduct] = useState<ProductRow | null>(null);
@@ -51,6 +60,21 @@ function ProductInner() {
   async function checkNow() {
     await supabase().from("tracked_products").update({ requested_check_at: new Date().toISOString() }).eq("id", id);
     alert("Queued — checked within a few hours on the next run.");
+  }
+  async function addCompetitor(compUrl: string) {
+    const u = compUrl.trim();
+    if (!u) return;
+    const platform = detectPlatform(u);
+    const { error } = await supabase().from("competitor_matches").insert({
+      product_id: id, source: "manual", merchant: PLATFORM_LABEL[platform] ?? "Other",
+      url: u.split("?")[0], title: product?.title ?? u, matched_by: "manual", confidence: 1,
+    });
+    if (error) { alert(/duplicate|unique/i.test(error.message) ? "That link is already attached." : error.message); return; }
+    await load();
+  }
+  async function delCompetitor(cid: string) {
+    await supabase().from("competitor_matches").delete().eq("id", cid);
+    await load();
   }
 
   if (loading) return <div className="empty">Loading…</div>;
@@ -100,8 +124,14 @@ function ProductInner() {
       <Section title="Offers · effective for your cards">
         <div className="card" style={{ padding: 4 }}><OffersTable offers={offers} cards={cards} /></div>
       </Section>
-      <Section title="Across platforms">
-        <div className="card" style={{ padding: 4 }}><CompetitorTable rows={competitors} current={cur} /></div>
+      <Section title="Across platforms · same product on other sites">
+        <div className="card" style={{ padding: 4 }}>
+          <CompetitorTable rows={competitors} current={cur} onDelete={delCompetitor} />
+        </div>
+        <CompetitorAdd onAdd={addCompetitor} />
+        <p className="sub" style={{ fontSize: 12, marginTop: 8 }}>
+          Paste the same product on Flipkart / Croma / Samsung etc. DropWatch scrapes each daily and the alert shows the lowest across all of them.
+        </p>
       </Section>
       <Section title="Alert history · why each fired">
         <div className="card">
@@ -109,6 +139,16 @@ function ProductInner() {
         </div>
       </Section>
     </>
+  );
+}
+
+function CompetitorAdd({ onAdd }: { onAdd: (url: string) => void | Promise<void> }) {
+  const [u, setU] = useState("");
+  return (
+    <div className="formrow" style={{ marginTop: 12, marginBottom: 0 }}>
+      <input className="url" placeholder="Paste the same product's link on another site" value={u} onChange={(e) => setU(e.target.value)} />
+      <button className="btn primary" disabled={!u.trim()} onClick={async () => { await onAdd(u); setU(""); }}>Add link</button>
+    </div>
   );
 }
 

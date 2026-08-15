@@ -251,6 +251,14 @@ export function createMemoryDb(opts: MemoryDbOptions = {}): Db {
     async getCompetitorMatches(productId) {
       return competitors.filter((c) => c.productId === productId && c.active);
     },
+    async setCompetitorPrice(id, price, checkedAt, title) {
+      const c = competitors.find((x) => x.id === id);
+      if (c) {
+        c.latestPrice = price;
+        c.latestCheckedAt = checkedAt;
+        if (title) c.title = title;
+      }
+    },
     async getCompetitorMin(productId) {
       const priced = competitors
         .filter(

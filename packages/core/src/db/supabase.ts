@@ -468,6 +468,12 @@ export function createDb(cfg: { url: string; serviceRoleKey: string }): Db {
       ) as any[];
       return rows.map(toCompetitor);
     },
+    async setCompetitorPrice(id, price, checkedAt, title) {
+      const patch: Record<string, unknown> = { latest_price: price, latest_checked_at: checkedAt };
+      if (title) patch.title = title;
+      const { error } = await sb.from("competitor_matches").update(patch).eq("id", id);
+      if (error) throw new Error(`DB setCompetitorPrice: ${error.message}`);
+    },
     async getCompetitorMin(productId) {
       const rows = must(
         await sb

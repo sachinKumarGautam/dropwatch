@@ -29,7 +29,7 @@ export interface CompetitorMatchRow {
   merchant: string;
   url: string;
   title: string;
-  matchedBy: "ean" | "model" | "llm";
+  matchedBy: "ean" | "model" | "llm" | "manual";
   confidence: number;
   latestPrice: Paise | null;
   latestCheckedAt: IsoTs | null;
@@ -85,6 +85,12 @@ export interface Db {
     rows: NewCompetitorMatch[],
   ): Promise<void>;
   getCompetitorMatches(productId: string): Promise<CompetitorMatchRow[]>;
+  setCompetitorPrice(
+    id: string,
+    price: Paise | null,
+    checkedAt: IsoTs,
+    title?: string | null,
+  ): Promise<void>;
   getCompetitorMin(
     productId: string,
   ): Promise<{ price: Paise; merchant: string } | null>;

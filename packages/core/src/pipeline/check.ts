@@ -20,6 +20,7 @@ import {
   rankEffective,
 } from "../offers/effective-price.js";
 import { deriveSignals } from "../stats.js";
+import { refreshCompetitors } from "./competitors.js";
 import { scoreDeal } from "../score.js";
 import { activeOrUpcomingWindow, buyWaitAdvice } from "../festival.js";
 import type {
@@ -220,6 +221,8 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
   // ── stats + signals + score ──
   const stats = await db.getStats(productId);
   if (!stats) return { productId, ok: true, price: extracted.price, effInstant: best.effectiveInstant };
+  // Refresh linked / cross-platform prices (deterministic scrape, no AI credits).
+  const competitors = await refreshCompetitors(deps, product);
   const competitorMin = await db.getCompetitorMin(productId);
   const signals = deriveSignals({
     stats,
@@ -265,6 +268,7 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
     bestCardNotHeld: notHeld,
     festivalNote,
     baseline: baselinePrice,
+    competitors: competitors.slice(0, 5).map((c) => ({ merchant: c.merchant, url: c.url, price: c.price })),
     productTitle: extracted.title || product.title || "Product",
     url: product.url,
     createdAt: nowIso,
@@ -278,6 +282,7 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
     samples90d: stats.samples90d,
     baseline: baselinePrice,
     effective: best.effectiveInstant,
+    competitors: competitors.slice(0, 5).map((c) => ({ merchant: c.merchant, price: c.price })),
   };
   let sent = false;
   let suppressedReason: string | null = null;

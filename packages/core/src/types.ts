@@ -236,6 +236,7 @@ export interface AlertEvent {
   bestCardNotHeld: { cardLabel: string; effectiveInstant: Paise } | null;
   festivalNote: string | null;
   baseline: Paise | null; // effective price when added, for the % deviation line
+  competitors: { merchant: string; url: string; price: Paise | null }[];
   productTitle: string;
   url: string;
   createdAt: IsoTs;
@@ -263,7 +264,7 @@ export interface SerpCandidate {
   thumbnail?: string;
 }
 
-export type MatchedBy = "ean" | "model" | "llm";
+export type MatchedBy = "ean" | "model" | "llm" | "manual";
 
 export interface CompetitorMatch {
   candidate: SerpCandidate;
@@ -374,6 +375,7 @@ export interface AlertContext {
   samples90d: number;
   baseline: Paise | null; // effective price when the product was added
   effective: Paise | null; // current effective price
+  competitors?: { merchant: string; price: Paise | null }[];
 }
 
 export interface AlertRow {

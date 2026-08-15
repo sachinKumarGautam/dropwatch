@@ -30,6 +30,7 @@ function ev(over: Partial<AlertEvent> = {}, effInstant = 6100000): AlertEvent {
     bestCardNotHeld: null,
     festivalNote: null,
     baseline: null,
+    competitors: [],
     productTitle: "Samsung Galaxy S24 Ultra",
     url: "https://amazon.in/dp/X",
     createdAt: NOW.toISOString(),

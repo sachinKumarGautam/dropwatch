@@ -48,7 +48,9 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Install Playwright chromium (best-effort; Amazon/Flipkart use Firecrawl)
+        continue-on-error: true
+        run: pnpm --filter @dropwatch/core exec playwright install --with-deps chromium
 
       - name: Check prices
         run: |

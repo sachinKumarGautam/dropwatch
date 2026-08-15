@@ -51,6 +51,7 @@ export function demoSeed(now: Date): SeedData {
     unitCount: null,
     unitLabel: null,
     targetPrice: null,
+    baselinePrice: null,
     pincode: "560102",
     collectionId: null,
     checkIntervalMinutes: null,

@@ -9,7 +9,7 @@ function prod(p: Partial<TrackedProductRow> = {}): TrackedProductRow {
   return {
     id: "p", url: "u", canonicalUrl: "u", platform: "amazon_in",
     title: null, brand: null, modelNumber: null, ean: null, imageUrl: null,
-    category: null, unitCount: null, unitLabel: null, targetPrice: null, pincode: null,
+    category: null, unitCount: null, unitLabel: null, targetPrice: null, baselinePrice: null, pincode: null,
     collectionId: null, checkIntervalMinutes: null, lastCheckedAt: null, requestedCheckAt: null,
     paused: false, muteUntil: null, snoozeUntil: null, consecutiveFailures: 0, lastError: null,
     createdAt: ago(10000), updatedAt: ago(10000), ...p,

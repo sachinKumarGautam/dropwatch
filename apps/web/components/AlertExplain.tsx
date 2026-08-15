@@ -9,6 +9,9 @@ export function AlertExplain({ alert: a, appName }: { alert: AlertRow; appName?:
   const be = a.best_effective;
   const sb = a.score_breakdown;
   const discount = ctx?.mrp && ctx.mrp > ctx.price ? (ctx.mrp - ctx.price) / ctx.mrp : null;
+  const eff = be?.effectiveInstant ?? ctx?.effective ?? null;
+  const baseline = ctx?.baseline ?? null;
+  const devBaseline = baseline && baseline > 0 && eff != null ? (baseline - eff) / baseline : null;
 
   return (
     <div style={{ borderBottom: "1px solid var(--border)" }}>
@@ -38,6 +41,14 @@ export function AlertExplain({ alert: a, appName }: { alert: AlertRow; appName?:
             <Field label="Original (MRP)" value={ctx?.mrp != null ? formatINR(ctx.mrp) : "—"} sub={discount != null ? `${pct(discount, 0)} off` : undefined} />
             <Field label="Effective (your card)" value={formatINR(be?.effectiveInstant)} good sub={be?.cardLabel} />
             <Field label="90-day median" value={ctx?.median90d != null ? formatINR(Math.round(ctx.median90d)) : "—"} sub={ctx ? `${ctx.samples90d} samples` : undefined} />
+            {baseline != null && (
+              <Field
+                label="vs add-price"
+                value={formatINR(baseline)}
+                good={devBaseline != null && devBaseline > 0}
+                sub={devBaseline != null && devBaseline > 0.0001 ? `▼ ${pct(devBaseline)} below` : "no change yet"}
+              />
+            )}
           </div>
 
           {be?.explain && be.explain.length > 0 && (

@@ -77,4 +77,16 @@ describe("scoreDeal", () => {
     expect(s.bypass).toBe("target_hit");
     expect(s.routing).toBe("immediate");
   });
+
+  it("baseline_drop bypasses → immediate at any total", () => {
+    const s = scoreDeal(
+      baseInput({
+        best: makeEff({ effectiveInstant: 7900000 }),
+        latest: makeExtracted({ price: 7950000, seller: "unknown 3P" }),
+        signals: [{ kind: "baseline_drop", value: 0.06, detail: "6% below add-price" }],
+      }),
+    );
+    expect(s.bypass).toBe("baseline_drop");
+    expect(s.routing).toBe("immediate");
+  });
 });

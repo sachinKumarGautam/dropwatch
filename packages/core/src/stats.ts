@@ -27,10 +27,14 @@ export interface DeriveInput {
   offerDiff: { appeared: Offer[]; disappeared: Offer[] };
   best: EffectivePrice;
   targetPrice: Paise | null;
+  baselinePrice: Paise | null;
   competitorMin: { price: Paise; merchant: string } | null;
   unit: { count: number | null; label: string | null };
   now: Date;
 }
+
+/** Alert when the effective price is at least this fraction below the add-time baseline. */
+export const BASELINE_DROP_PCT = 0.05;
 
 const belowMedianThreshold = (platform: string): number =>
   platform === "nykaa" ? 0.25 : 0.12;
@@ -193,6 +197,18 @@ export function deriveSignals(input: DeriveInput): Signal[] {
   // ── target hit (bypass) ──
   if (input.targetPrice != null && eff <= input.targetPrice) {
     out.push({ kind: "target_hit", value: eff, detail: "Target price reached (effective)" });
+  }
+
+  // ── baseline drop (bypass): ≥5% below the price when you added it ──
+  if (input.baselinePrice != null && input.baselinePrice > 0) {
+    const drop = (input.baselinePrice - eff) / input.baselinePrice;
+    if (drop >= BASELINE_DROP_PCT) {
+      out.push({
+        kind: "baseline_drop",
+        value: drop,
+        detail: `${(drop * 100).toFixed(1)}% below the price when you added it`,
+      });
+    }
   }
 
   // ── rising price (window closing) ──

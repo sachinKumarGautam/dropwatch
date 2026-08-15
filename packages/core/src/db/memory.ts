@@ -87,6 +87,7 @@ export function createMemoryDb(opts: MemoryDbOptions = {}): Db {
         unitCount: row.unitCount ?? null,
         unitLabel: row.unitLabel ?? null,
         targetPrice: row.targetPrice ?? null,
+        baselinePrice: null,
         pincode: row.pincode ?? null,
         collectionId: row.collectionId ?? null,
         checkIntervalMinutes: row.checkIntervalMinutes ?? null,

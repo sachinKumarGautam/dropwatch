@@ -128,7 +128,9 @@ export function scoreDeal(input: ScoreInput): DealScore {
     ? "price_error"
     : hasSignal(signals, "target_hit")
       ? "target_hit"
-      : null;
+      : hasSignal(signals, "baseline_drop")
+        ? "baseline_drop"
+        : null;
 
   const routing: Routing = bypass
     ? "immediate"

@@ -3,7 +3,7 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { formatINR, timeAgo, PLATFORM_LABEL } from "@/lib/format";
+import { formatINR, timeAgo, pct, PLATFORM_LABEL } from "@/lib/format";
 import { PriceChart } from "@/components/PriceChart";
 import { OffersTable } from "@/components/OffersTable";
 import { CompetitorTable } from "@/components/CompetitorTable";
@@ -57,6 +57,8 @@ function ProductInner() {
   if (err) return <div className="banner">{err}</div>;
   if (!product) return <div className="empty">Not found.</div>;
   const cur = stats?.current_effective ?? stats?.current_price ?? null;
+  const baseline = product.baseline_price;
+  const devBaseline = baseline && baseline > 0 && cur != null ? (baseline - cur) / baseline : null;
 
   return (
     <>
@@ -73,16 +75,24 @@ function ProductInner() {
         </div>
         <div style={{ textAlign: "right" }}>
           <div className="price eff num" style={{ fontSize: 26 }}>{formatINR(cur)}</div>
-          <button className="btn primary" style={{ marginTop: 8 }} onClick={checkNow}>Check now</button>
+          {devBaseline != null && devBaseline > 0.0001 && (
+            <div className="chip good" style={{ marginTop: 4 }}>▼ {pct(devBaseline)} below add-price</div>
+          )}
+          <div><button className="btn primary" style={{ marginTop: 8 }} onClick={checkNow}>Check now</button></div>
         </div>
       </div>
 
       <div className="grid2" style={{ marginTop: 8 }}>
+        <Stat label="Add-price (baseline)" value={formatINR(baseline)} />
+        <Stat label="Target" value={product.target_price ? formatINR(product.target_price) : "—"} />
         <Stat label="All-time low" value={formatINR(stats?.all_time_low)} />
         <Stat label="90-day low" value={formatINR(stats?.low_90d)} />
         <Stat label="90-day median" value={formatINR(stats?.median_90d ? Math.round(stats.median_90d) : null)} />
         <Stat label="Samples (90d)" value={String(stats?.samples_90d ?? 0)} />
       </div>
+      <p className="sub" style={{ marginTop: 10, fontSize: 12 }}>
+        Alerts fire when the effective price is ≥5% below your add-price{product.target_price ? " or reaches your target" : ""} — whichever comes first. (Full upfront price; no-cost-EMI isn't counted as a discount.)
+      </p>
 
       <Section title="Price history">
         <div className="card" style={{ padding: 16 }}><PriceChart points={points} /></div>

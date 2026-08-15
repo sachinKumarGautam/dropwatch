@@ -8,6 +8,7 @@ import type { AlertEvent, SlackPayload } from "../types.js";
 const WHY_NOW_ORDER = [
   "price_error",
   "target_hit",
+  "baseline_drop",
   "eff_all_time_low",
   "all_time_low",
   "low_180d",
@@ -35,9 +36,18 @@ function whyNow(ev: AlertEvent): string[] {
 export function buildDealBlocks(ev: AlertEvent): SlackPayload {
   const b = ev.best;
   const scoreTag = `DEAL ${ev.score.total}/100${ev.score.bypass ? " ⚠︎" : ""}`;
+  const devSticker = b.sticker > 0 ? (b.sticker - b.effectiveInstant) / b.sticker : 0;
+  const devBaseline =
+    ev.baseline && ev.baseline > 0 ? (ev.baseline - b.effectiveInstant) / ev.baseline : null;
+  const devParts: string[] = [];
+  if (devSticker > 0.001) devParts.push(`▼ ${(devSticker * 100).toFixed(1)}% below list`);
+  if (devBaseline != null && devBaseline > 0.001)
+    devParts.push(`▼ ${(devBaseline * 100).toFixed(1)}% below your add-price (${formatINR(ev.baseline!)})`);
+
   const priceLine =
     `*${formatINR(b.effectiveInstant)}* effective` +
     (b.sticker !== b.effectiveInstant ? `  (sticker ${formatINR(b.sticker)})` : "") +
+    (devParts.length ? `\n${devParts.join("  ·  ")}` : "") +
     `\n_${b.cardLabel}_ · ${b.explain.join(" · ") || "no offers applied"}`;
 
   const ranking = ev.ranking

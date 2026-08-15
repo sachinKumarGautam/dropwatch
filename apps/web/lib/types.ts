@@ -17,6 +17,7 @@ export interface ProductRow {
   brand: string | null;
   image_url: string | null;
   target_price: number | null;
+  baseline_price: number | null;
   pincode: string | null;
   collection_id: string | null;
   check_interval_minutes: number | null;
@@ -78,7 +79,10 @@ export interface AlertRow {
     depth: number; rarity: number; crossPlatform: number;
     offerQuality: number; trustLogistics: number; urgency: number;
   } | null;
-  context: { price: number; mrp: number | null; median90d: number | null; samples90d: number } | null;
+  context: {
+    price: number; mrp: number | null; median90d: number | null; samples90d: number;
+    baseline?: number | null; effective?: number | null;
+  } | null;
   signals: { kind: string; detail: string }[] | null;
   suppressed_reason: string | null;
   created_at: string;

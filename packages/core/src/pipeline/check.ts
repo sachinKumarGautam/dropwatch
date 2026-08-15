@@ -161,7 +161,9 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
     offers: offerDiff.current,
     cards,
   });
-  const ranked = rankEffective(effRows);
+  // Alerts use the full upfront price — exclude the no-cost-EMI path (EMI is not a discount).
+  const upfrontRows = effRows.filter((r) => r.paymentPath !== "no_cost_emi");
+  const ranked = rankEffective(upfrontRows.length ? upfrontRows : effRows);
   const best: EffectivePrice = ranked[0] ?? {
     productId,
     platform: product.platform,
@@ -200,10 +202,14 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
     confidence: extracted.confidence,
     evidencePath: evidencePath || null,
   });
+  // Baseline = the effective price when the product was first added (set once).
+  const baselinePrice = product.baselinePrice ?? best.effectiveInstant;
+
   await db.updateTrackedProduct(productId, {
     consecutiveFailures: 0,
     lastError: null,
     lastCheckedAt: nowIso,
+    baselinePrice,
     title: product.title ?? extracted.title,
     ean: product.ean ?? extracted.ean,
     modelNumber: product.modelNumber ?? extracted.modelNumber,
@@ -223,6 +229,7 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
     offerDiff,
     best,
     targetPrice: product.targetPrice,
+    baselinePrice,
     competitorMin,
     unit: { count: extracted.unitCount, label: extracted.unitLabel },
     now: t,
@@ -257,6 +264,7 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
     ranking: ranked.slice(0, 3),
     bestCardNotHeld: notHeld,
     festivalNote,
+    baseline: baselinePrice,
     productTitle: extracted.title || product.title || "Product",
     url: product.url,
     createdAt: nowIso,
@@ -268,6 +276,8 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
     mrp: extracted.mrp,
     median90d: stats.median90d,
     samples90d: stats.samples90d,
+    baseline: baselinePrice,
+    effective: best.effectiveInstant,
   };
   let sent = false;
   let suppressedReason: string | null = null;

@@ -13,6 +13,7 @@ function baseInput(over: Partial<DeriveInput> = {}): DeriveInput {
     offerDiff: { appeared: [], disappeared: [] },
     best: makeEff({ effectiveInstant: 8000000 }),
     targetPrice: null,
+    baselinePrice: null,
     competitorMin: null,
     unit: { count: null, label: null },
     now: NOW,
@@ -56,6 +57,19 @@ describe("deriveSignals", () => {
       baseInput({ best: makeEff({ effectiveInstant: 6900000 }), targetPrice: 7000000 }),
     );
     expect(hasSignal(sig, "target_hit")).toBe(true);
+  });
+
+  it("baseline_drop fires at ≥5% below the add-price, not at 3%", () => {
+    // baseline 10,00,000 ; 5.4% below → fires
+    const fires = deriveSignals(
+      baseInput({ best: makeEff({ effectiveInstant: 9460000 }), baselinePrice: 10000000 }),
+    );
+    expect(hasSignal(fires, "baseline_drop")).toBe(true);
+    // 3% below → does not fire
+    const quiet = deriveSignals(
+      baseInput({ best: makeEff({ effectiveInstant: 9700000 }), baselinePrice: 10000000 }),
+    );
+    expect(hasSignal(quiet, "baseline_drop")).toBe(false);
   });
 
   it("back_in_stock fires on OOS→in-stock transition", () => {

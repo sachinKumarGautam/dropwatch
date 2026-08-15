@@ -198,6 +198,7 @@ export type SignalKind =
   | "lightning_deal"
   | "price_error"
   | "target_hit"
+  | "baseline_drop"
   | "rising_price"
   | "cross_platform_lowest";
 
@@ -218,7 +219,7 @@ export interface DealScore {
   trustLogistics: number;
   urgency: number;
   penalties: { fakeMrp: number; volatility: number; staleData: number };
-  bypass: "price_error" | "target_hit" | null;
+  bypass: "price_error" | "target_hit" | "baseline_drop" | null;
   routing: Routing;
 }
 
@@ -234,6 +235,7 @@ export interface AlertEvent {
   ranking: EffectivePrice[]; // top few for the block
   bestCardNotHeld: { cardLabel: string; effectiveInstant: Paise } | null;
   festivalNote: string | null;
+  baseline: Paise | null; // effective price when added, for the % deviation line
   productTitle: string;
   url: string;
   createdAt: IsoTs;
@@ -294,6 +296,7 @@ export interface TrackedProductRow {
   unitCount: number | null;
   unitLabel: string | null;
   targetPrice: Paise | null;
+  baselinePrice: Paise | null;
   pincode: string | null;
   collectionId: string | null;
   checkIntervalMinutes: number | null;
@@ -366,6 +369,8 @@ export interface AlertContext {
   mrp: Paise | null;
   median90d: number | null;
   samples90d: number;
+  baseline: Paise | null; // effective price when the product was added
+  effective: Paise | null; // current effective price
 }
 
 export interface AlertRow {

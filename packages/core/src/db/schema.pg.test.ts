@@ -30,6 +30,7 @@ beforeAll(async () => {
   `);
   await db.exec(readFileSync(resolve(MIG, "0002_rls.sql"), "utf8"));
   await db.exec(readFileSync(resolve(MIG, "0003_apps_and_auth.sql"), "utf8"));
+  await db.exec(readFileSync(resolve(MIG, "0004_baseline.sql"), "utf8"));
 });
 
 describe("SQL migrations + v_product_stats", () => {

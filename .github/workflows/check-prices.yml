@@ -25,6 +25,7 @@ jobs:
     env:
       DRY_RUN: "0"
       MINIMAL_LLM: "1"
+      DISABLE_LLM_EXTRACT: ${{ vars.DISABLE_LLM_EXTRACT || '1' }}
       LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'openai' }}
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
       LLM_REASONING_MODEL: ${{ vars.LLM_REASONING_MODEL || 'gpt-4o-mini' }}

@@ -63,6 +63,9 @@ async function extractFrom(
     const e = structuredToExtracted(merged, offers);
     if (e) return e;
   }
+  if (deps.cfg.disableLlmExtract) {
+    throw new Error("no deterministic price found (LLM extraction disabled)");
+  }
   const md = sourceText(scrape);
   return llmExtract(md, { platform: scrape.platform, knownTitle: product.title ?? undefined, offers }, deps.llm);
 }

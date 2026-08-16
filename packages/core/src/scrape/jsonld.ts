@@ -111,17 +111,27 @@ export function parseEmbeddedState(
  * price-to-pay, M.R.P., availability, title and seller straight from the HTML.
  */
 export function parseAmazon(html: string): Partial<ExtractedProduct> | null {
-  // Prefer the buy-box "priceToPay" block; its a-offscreen (if populated) or a-price-whole.
-  let price =
-    toPaise(
-      html.match(/priceToPay[\s\S]{0,240}?a-offscreen">\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i)?.[1],
-    ) ??
-    toPaise(html.match(/priceToPay[\s\S]{0,280}?a-price-whole">\s*([\d,]+)/i)?.[1]);
-  // Fallback: first corePrice / apex price on the page.
-  if (price == null)
-    price = toPaise(
-      html.match(/(?:corePrice|apexPrice|a-price)[\s\S]{0,200}?a-price-whole">\s*([\d,]+)/i)?.[1],
-    );
+  // Scope to the buy-box region so variant-swatch prices don't win.
+  const region =
+    html.match(
+      /id="(?:corePriceDisplay_desktop_feature_div|corePrice_feature_div|apex_desktop|buyBoxAccordion|price)"[\s\S]{0,5000}/i,
+    )?.[0] ?? html;
+  const priceToPayWhole = (s: string) =>
+    toPaise(s.match(/priceToPay[\s\S]{0,320}?a-price-whole">\s*([\d,]+)/i)?.[1]);
+  const offscreenRupees = (s: string) =>
+    toPaise(s.match(/a-offscreen">\s*(?:₹|Rs\.?)\s*([\d,]+(?:\.\d+)?)/i)?.[1]);
+  const anyWhole = (s: string) => toPaise(s.match(/a-price-whole">\s*([\d,]+)/i)?.[1]);
+  const legacyBlock = (s: string) =>
+    toPaise(s.match(/priceblock_(?:our|deal|sale)price[^>]*>\s*(?:₹|Rs\.?)\s*([\d,]+)/i)?.[1]);
+
+  const price =
+    priceToPayWhole(region) ??
+    offscreenRupees(region) ??
+    anyWhole(region) ??
+    legacyBlock(html) ??
+    priceToPayWhole(html) ??
+    offscreenRupees(html) ??
+    anyWhole(html);
   if (price == null) return null;
 
   const mrp =

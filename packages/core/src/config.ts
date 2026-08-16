@@ -21,6 +21,7 @@ export interface Config {
   };
   defaultPincode: string | null;
   minimalLlm: boolean;
+  disableLlmExtract: boolean;
   thresholds: { immediate: number; digest: number };
   caps: { perProductPerDay: number; globalPerDay: number };
   github: { token: string | null; repo: string | null };
@@ -91,6 +92,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     defaultPincode: nullable(env.DEFAULT_PINCODE) ?? nullable(env.USER_PINCODE),
     minimalLlm: bool(env.MINIMAL_LLM, true),
+    disableLlmExtract: bool(env.DISABLE_LLM_EXTRACT, false),
     thresholds: {
       immediate: num(env.ALERT_THRESHOLD_IMMEDIATE, 70),
       digest: num(env.ALERT_THRESHOLD_DIGEST, 55),

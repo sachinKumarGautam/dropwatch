@@ -21,8 +21,11 @@ async function throttle(): Promise<void> {
   if (wait > 0) await sleep(wait);
 }
 
+// A real product page is large; a few KB means we got a bot-block/interstitial.
+const THIN_HTML = 20_000;
+
 export function createFirecrawl(apiKey: string): Pick<Scraper, "fetchTier1"> {
-  async function call(url: string, opts: FirecrawlOpts): Promise<Response> {
+  async function call(url: string, opts: FirecrawlOpts, proxy: "auto" | "stealth"): Promise<Response> {
     const actions = (opts.actions ?? []).map((a) =>
       a.type === "click"
         ? { type: "click", selector: a.selector }
@@ -36,7 +39,7 @@ export function createFirecrawl(apiKey: string): Pick<Scraper, "fetchTier1"> {
       body: JSON.stringify({
         url,
         formats: ["markdown", "html"],
-        proxy: "auto",
+        proxy,
         onlyMainContent: false,
         timeout: opts.timeoutMs ?? 45_000,
         ...(actions.length ? { actions } : {}),
@@ -52,7 +55,7 @@ export function createFirecrawl(apiKey: string): Pick<Scraper, "fetchTier1"> {
         for (let attempt = 0; attempt < 2; attempt++) {
           await throttle();
           attempts++;
-          const res = await call(url, opts);
+          const res = await call(url, opts, "auto");
           if (res.status === 429) {
             const body = await res.text();
             const m = body.match(/retry after (\d+)s/i);
@@ -73,8 +76,27 @@ export function createFirecrawl(apiKey: string): Pick<Scraper, "fetchTier1"> {
               attempts,
             );
           }
-          const data: any = await res.json();
-          const doc = data?.data ?? data;
+          const j1: any = await res.json();
+          let doc: any = j1?.data ?? j1 ?? {};
+          let html: string = doc?.html ?? doc?.rawHtml ?? "";
+          // Thin content = anti-bot interstitial. Escalate to the stealth proxy once.
+          if (html.length < THIN_HTML) {
+            await throttle();
+            attempts++;
+            const sres = await call(url, opts, "stealth");
+            if (sres.ok) {
+              const j2: any = await sres.json();
+              const sdoc: any = j2?.data ?? j2 ?? {};
+              const shtml: string = sdoc?.html ?? sdoc?.rawHtml ?? "";
+              if (shtml.length > html.length) {
+                doc = sdoc;
+                html = shtml;
+              }
+            }
+          }
+          if (html.length < THIN_HTML || /Continue shopping|Robot Check|Enter the characters you see below/i.test(html)) {
+            return fail(url, "blocked", "anti-bot wall (interstitial) — will retry next run", start, attempts);
+          }
           return {
             ok: true,
             tierUsed: 1,
@@ -82,7 +104,7 @@ export function createFirecrawl(apiKey: string): Pick<Scraper, "fetchTier1"> {
             platform: platformOf(url),
             fetchedAt: new Date().toISOString(),
             markdown: doc?.markdown,
-            html: doc?.html ?? doc?.rawHtml,
+            html,
             meta: { attempts, durationMs: Date.now() - start, proxyUsed: true },
           };
         }

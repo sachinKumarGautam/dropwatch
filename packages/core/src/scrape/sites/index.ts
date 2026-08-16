@@ -51,10 +51,8 @@ const amazon: SiteAdapter = {
     const m = url.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
     return m ? `https://www.amazon.in/dp/${m[1]!.toUpperCase()}` : stripQuery(url);
   },
-  offerModalActions: [
-    { type: "click", selector: "#itembox-InstantBankDiscount a, a[id*='offer']" },
-    { type: "wait", milliseconds: 1500 },
-  ],
+  // NOTE: no Firecrawl click-actions — a missing offer element made Firecrawl 500 the
+  // whole scrape ("Element not found"). Offers are harvested from the inline markdown instead.
   parseEmbedded: (html) => parseEmbeddedState(html, "amazon_in"),
   offerSectionHints: ["Bank Offer", "No Cost EMI", "Cashback", "Partner Offers", "Coupon"],
 };

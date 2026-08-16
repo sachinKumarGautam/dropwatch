@@ -135,7 +135,7 @@ function ProductInner() {
       </Section>
       <Section title="Alert history · why each fired">
         <div className="card">
-          {alerts.length === 0 ? <div className="empty">No alerts yet.</div> : alerts.map((a) => <AlertExplain key={a.id} alert={a} />)}
+          {alerts.length === 0 ? <div className="empty">No alerts yet.</div> : alerts.map((a) => <AlertExplain key={a.id} alert={a} url={product.url} />)}
         </div>
       </Section>
     </>

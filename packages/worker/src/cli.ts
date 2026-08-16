@@ -23,6 +23,7 @@ import {
   health,
   addProduct,
   watchdog,
+  audit,
   sendOps,
 } from "@dropwatch/core";
 
@@ -79,6 +80,9 @@ async function main() {
     case "watchdog":
       log(await watchdog(deps));
       break;
+    case "audit":
+      log(await audit(deps));
+      break;
     case "add": {
       const url = args[0];
       if (!url) throw new Error("usage: worker add <url> [--target ₹] [--pincode P]");
@@ -91,7 +95,7 @@ async function main() {
     }
     default:
       console.error(
-        "commands: check <id|--url u> | check-all | sweep [--product id] | digest | watchdog | health | add <url>",
+        "commands: check <id|--url u> | check-all | sweep [--product id] | digest | watchdog | audit | health | add <url>",
       );
       process.exit(2);
   }

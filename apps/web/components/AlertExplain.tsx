@@ -3,7 +3,7 @@ import { useState } from "react";
 import { formatINR, timeAgo, pct, scoreColor } from "@/lib/format";
 import type { AlertRow } from "@/lib/types";
 
-export function AlertExplain({ alert: a, appName }: { alert: AlertRow; appName?: string }) {
+export function AlertExplain({ alert: a, appName, url }: { alert: AlertRow; appName?: string; url?: string }) {
   const [open, setOpen] = useState(false);
   const ctx = a.context;
   const be = a.best_effective;
@@ -90,6 +90,14 @@ export function AlertExplain({ alert: a, appName }: { alert: AlertRow; appName?:
                   <span key={i} className="chip">{c.merchant}: <b style={{ color: "var(--text)" }}>{c.price != null ? formatINR(c.price) : "—"}</b></span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {url && (
+            <div>
+              <a className="btn primary" href={url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                Open product ↗
+              </a>
             </div>
           )}
 

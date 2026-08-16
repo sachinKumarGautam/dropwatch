@@ -126,10 +126,11 @@ export function buildDealBlocks(ev: AlertEvent): SlackPayload {
 export function buildDigestBlocks(evs: AlertEvent[]): SlackPayload {
   const sorted = [...evs].sort((a, b) => b.score.total - a.score.total).slice(0, 10);
   const rows = sorted
-    .map(
-      (e) =>
-        `• *${e.score.total}* · ${formatINR(e.best.effectiveInstant)} · ${e.productTitle.slice(0, 60)} (${e.best.cardLabel})`,
-    )
+    .map((e) => {
+      const name = e.productTitle.slice(0, 60);
+      const linked = e.url ? `<${e.url}|${name}>` : name;
+      return `• *${e.score.total}* · ${formatINR(e.best.effectiveInstant)} · ${linked} (${e.best.cardLabel})`;
+    })
     .join("\n");
   const blocks: unknown[] = [
     { type: "header", text: { type: "plain_text", text: `DropWatch digest — ${sorted.length} deals`, emoji: true } },

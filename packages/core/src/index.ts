@@ -13,6 +13,7 @@ export { digest, type DigestSummary } from "./pipeline/digest.js";
 export { health, addProduct, type AddResult } from "./pipeline/ops.js";
 export { watchdog, type WatchdogResult } from "./pipeline/watchdog.js";
 export { expireProducts } from "./pipeline/expire.js";
+export { audit, type AuditReport } from "./pipeline/audit.js";
 export { isDue, intervalFor, DEFAULT_INTERVAL_MIN } from "./pipeline/gate.js";
 export { sendOps, sendHealthOnce } from "./alerts/ops.js";
 

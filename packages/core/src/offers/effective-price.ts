@@ -59,6 +59,11 @@ function offerDiscount(o: Offer, amount: Paise): number | null {
   }
   if (o.valueFlat != null) return Math.min(o.valueFlat, amount);
   if (o.valuePct != null) {
+    // Guard against mis-parsed offers inflating the effective price:
+    //  - a bank instant discount always states a cap; a capless % one is unreliable → skip
+    //  - an implausible % (>40) is almost certainly a parse error → skip
+    if (o.valuePct > 40) return null;
+    if (o.kind === "instant_bank_discount" && o.cap == null) return null;
     const raw = Math.round((amount * o.valuePct) / 100);
     return o.cap != null ? Math.min(raw, o.cap) : raw;
   }

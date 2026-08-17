@@ -83,6 +83,14 @@ function ProductInner() {
   const cur = stats?.current_effective ?? stats?.current_price ?? null;
   const baseline = product.baseline_price;
   const devBaseline = baseline && baseline > 0 && cur != null ? (baseline - cur) / baseline : null;
+  const lastPt = points[points.length - 1];
+  const SRC: Record<string, string> = {
+    dom: "read live from the store page",
+    jsonld: "read from the store's structured data",
+    embedded_state: "read from the store page",
+    llm: "AI-extracted from the page",
+  };
+  const source = lastPt?.extract_source ? SRC[lastPt.extract_source] ?? lastPt.extract_source : null;
 
   return (
     <>
@@ -95,6 +103,7 @@ function ProductInner() {
           <p className="sub">
             <span className="chip">{PLATFORM_LABEL[product.platform] ?? product.platform}</span>{" "}
             <a href={product.url} target="_blank" rel="noreferrer">view on site ↗</a> · checked {timeAgo(product.last_checked_at)}
+            {source && <> · {source}</>}
           </p>
         </div>
         <div style={{ textAlign: "right" }}>

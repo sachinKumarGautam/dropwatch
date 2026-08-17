@@ -42,6 +42,8 @@ export interface PricePointRow {
   in_stock: boolean;
   effective_instant: number | null;
   effective_net: number | null;
+  extract_source?: string | null;
+  source_tier?: number | null;
 }
 
 export interface OfferRow {

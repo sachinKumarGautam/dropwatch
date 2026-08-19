@@ -46,6 +46,8 @@ export function scoreColor(score: number): string {
 }
 
 export const FREQ_OPTIONS: { label: string; minutes: number }[] = [
+  { label: "hourly", minutes: 60 },
+  { label: "every 3h", minutes: 180 },
   { label: "every 6h", minutes: 360 },
   { label: "every 12h", minutes: 720 },
   { label: "daily", minutes: 1440 },

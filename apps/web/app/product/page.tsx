@@ -91,6 +91,9 @@ function ProductInner() {
     llm: "AI-extracted from the page",
   };
   const source = lastPt?.extract_source ? SRC[lastPt.extract_source] ?? lastPt.extract_source : null;
+  const alertMarkers = alerts
+    .filter((a) => a.sent_at || a.routing !== "log")
+    .map((a) => ({ ts: Date.parse(a.created_at), score: a.score, sent: !!a.sent_at }));
 
   return (
     <>
@@ -128,7 +131,11 @@ function ProductInner() {
       </p>
 
       <Section title="Price history">
-        <div className="card" style={{ padding: 16 }}><PriceChart points={points} /></div>
+        <div className="card" style={{ padding: 16 }}><PriceChart points={points} alerts={alertMarkers} /></div>
+        <p className="sub" style={{ fontSize: 12, marginTop: 8 }}>
+          Tracking since {new Date(product.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} — earlier prices aren't available (retailers don't publish price history).
+          {alertMarkers.length > 0 && " ⚑ marks when an alert fired (amber = sent to Slack) — so you can compare the price before & after."}
+        </p>
       </Section>
       <Section title="Offers · effective for your cards">
         <div className="card" style={{ padding: 4 }}><OffersTable offers={offers} cards={cards} /></div>

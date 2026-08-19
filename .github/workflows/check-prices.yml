@@ -1,12 +1,11 @@
 name: check-prices
 
-# 6 runs/day so per-app intervals down to ~4h are honored; the per-product frequency
-# gate decides who actually gets scraped (daily-default URLs still cost ~1 scrape/day).
-# 03:30 UTC = 09:00 IST is the anchor run that also sends the digest.
+# Hourly (public repo = free Actions minutes) so per-URL "hourly" frequency is honored.
+# The per-product frequency gate decides who actually gets scraped, so a daily-default
+# URL still costs ~1 scrape/day even though the workflow runs every hour.
 on:
   schedule:
-    - cron: "30 3 * * *"
-    - cron: "30 7,11,15,19,23 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       product_id:
@@ -61,7 +60,11 @@ jobs:
             pnpm --filter @dropwatch/worker start -- check-all
           fi
 
-      # digest only on the 03:30 UTC run (09:00 IST)
-      - name: Daily digest
-        if: github.event.schedule == '30 3 * * *'
-        run: pnpm --filter @dropwatch/worker start -- digest
+      # digest once a day, at ~09:00 IST (03:xx UTC)
+      - name: Daily digest (09:00 IST)
+        run: |
+          if [ "$(date -u +%H)" = "03" ]; then
+            pnpm --filter @dropwatch/worker start -- digest
+          else
+            echo "not the digest hour ($(date -u +%H) UTC) — skipping"
+          fi

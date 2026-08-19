@@ -35,5 +35,6 @@ export function isDue(
     return true;
   if (!p.lastCheckedAt) return true; // never checked
   const intervalMs = intervalFor(p, collectionIntervals) * 60_000;
-  return now.getTime() - Date.parse(p.lastCheckedAt) >= intervalMs - GRACE_MS;
+  const grace = Math.min(GRACE_MS, intervalMs * 0.1); // absorb cron jitter, but not for short intervals
+  return now.getTime() - Date.parse(p.lastCheckedAt) >= intervalMs - grace;
 }

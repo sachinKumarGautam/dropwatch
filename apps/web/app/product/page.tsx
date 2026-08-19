@@ -121,9 +121,9 @@ function ProductInner() {
       <div className="grid2" style={{ marginTop: 8 }}>
         <Stat label="Add-price (baseline)" value={formatINR(baseline)} />
         <Stat label="Target" value={product.target_price ? formatINR(product.target_price) : "—"} />
-        <Stat label="All-time low" value={formatINR(stats?.all_time_low)} />
-        <Stat label="90-day low" value={formatINR(stats?.low_90d)} />
-        <Stat label="90-day median" value={formatINR(stats?.median_90d ? Math.round(stats.median_90d) : null)} />
+        <Stat label="All-time low (effective)" value={formatINR(stats?.eff_all_time_low ?? stats?.all_time_low)} />
+        <Stat label="90-day low (effective)" value={formatINR(stats?.eff_low_90d ?? stats?.low_90d)} />
+        <Stat label="90-day median (sticker)" value={formatINR(stats?.median_90d ? Math.round(stats.median_90d) : null)} />
         <Stat label="Samples (90d)" value={String(stats?.samples_90d ?? 0)} />
       </div>
       <p className="sub" style={{ marginTop: 10, fontSize: 12 }}>

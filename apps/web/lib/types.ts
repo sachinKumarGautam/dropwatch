@@ -115,4 +115,6 @@ export interface StatsRow {
   low_30d: number | null;
   median_90d: number | null;
   samples_90d: number;
+  eff_all_time_low: number | null;
+  eff_low_90d: number | null;
 }

@@ -29,6 +29,7 @@ jobs:
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
       LLM_REASONING_MODEL: ${{ vars.LLM_REASONING_MODEL || 'gpt-4o-mini' }}
       DEFAULT_PINCODE: ${{ vars.DEFAULT_PINCODE }}
+      APP_URL: ${{ vars.APP_URL }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

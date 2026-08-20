@@ -22,6 +22,20 @@ const WHY_NOW_ORDER = [
   "back_in_stock",
 ] as const;
 
+/** Deepest discount vs list price or add-price, for the deal emoji + size. */
+function bestDiscount(ev: AlertEvent): number {
+  const eff = ev.best.effectiveInstant;
+  const refs = [ev.best.sticker, ev.baseline].filter((v): v is number => v != null && v > eff);
+  return refs.length ? Math.max(...refs.map((v) => (v - eff) / v)) : 0;
+}
+
+function dealEmoji(pctOff: number): string {
+  if (pctOff >= 0.25) return "🔥";
+  if (pctOff >= 0.15) return "💰";
+  if (pctOff >= 0.08) return "🔻";
+  return "🔹";
+}
+
 function whyNow(ev: AlertEvent): string[] {
   const byKind = new Map(ev.signals.map((s) => [s.kind, s.detail]));
   const picks: string[] = [];
@@ -35,7 +49,7 @@ function whyNow(ev: AlertEvent): string[] {
 
 export function buildDealBlocks(ev: AlertEvent): SlackPayload {
   const b = ev.best;
-  const scoreTag = `DEAL ${ev.score.total}/100${ev.score.bypass ? " ⚠︎" : ""}`;
+  const scoreTag = `${dealEmoji(bestDiscount(ev))} DEAL ${ev.score.total}/100${ev.score.bypass ? " ⚠︎" : ""}`;
   const devSticker = b.sticker > 0 ? (b.sticker - b.effectiveInstant) / b.sticker : 0;
   const devBaseline =
     ev.baseline && ev.baseline > 0 ? (ev.baseline - b.effectiveInstant) / ev.baseline : null;
@@ -108,6 +122,9 @@ export function buildDealBlocks(ev: AlertEvent): SlackPayload {
     type: "actions",
     elements: [
       { type: "button", text: { type: "plain_text", text: "Buy" }, url: ev.url, style: "primary" },
+      ...(ev.dropwatchUrl
+        ? [{ type: "button", text: { type: "plain_text", text: "📊 DropWatch" }, url: ev.dropwatchUrl }]
+        : []),
       { type: "button", text: { type: "plain_text", text: "Snooze 7d" }, action_id: "snooze", value: ev.productId },
       { type: "button", text: { type: "plain_text", text: "Mute" }, action_id: "mute", value: ev.productId },
       { type: "button", text: { type: "plain_text", text: "Set target" }, action_id: "set_target", value: ev.productId },
@@ -127,17 +144,32 @@ export function buildDigestBlocks(evs: AlertEvent[]): SlackPayload {
   const sorted = [...evs].sort((a, b) => b.score.total - a.score.total).slice(0, 10);
   const rows = sorted
     .map((e) => {
-      const name = e.productTitle.slice(0, 60);
+      const name = e.productTitle.slice(0, 55);
       const linked = e.url ? `<${e.url}|${name}>` : name;
-      return `• *${e.score.total}* · ${formatINR(e.best.effectiveInstant)} · ${linked} (${e.best.cardLabel})`;
+      const dw = e.dropwatchUrl ? ` <${e.dropwatchUrl}|📊>` : "";
+      const eff = e.best.effectiveInstant;
+      const sticker = e.best.sticker;
+      const emoji = dealEmoji(bestDiscount(e));
+      // "was ₹X (▼Y%)" vs the list price so the deal size is visible at a glance.
+      const deal =
+        sticker > eff
+          ? `  ~was ${formatINR(sticker)}~ ▼${(((sticker - eff) / sticker) * 100).toFixed(0)}%`
+          : "";
+      const base =
+        e.baseline && e.baseline > eff
+          ? ` · ▼${(((e.baseline - eff) / e.baseline) * 100).toFixed(0)}% vs add-price`
+          : "";
+      return `${emoji} *${e.score.total}* · *${formatINR(eff)}*${deal} — ${linked}${dw} (${e.best.cardLabel})${base}`;
     })
     .join("\n");
+  const n = sorted.length;
+  const title = `DropWatch digest — ${n} deal${n === 1 ? "" : "s"}`;
   const blocks: unknown[] = [
-    { type: "header", text: { type: "plain_text", text: `DropWatch digest — ${sorted.length} deals`, emoji: true } },
+    { type: "header", text: { type: "plain_text", text: title, emoji: true } },
     { type: "section", text: { type: "mrkdwn", text: rows || "_no deals_" } },
-    { type: "context", elements: [{ type: "mrkdwn", text: `Generated ${new Date().toISOString()}` }] },
+    { type: "context", elements: [{ type: "mrkdwn", text: `Effective price after your best card · generated ${new Date().toISOString()}` }] },
   ];
-  return { blocks, text: `DropWatch digest — ${sorted.length} deals` };
+  return { blocks, text: title };
 }
 
 export function buildHealthBlocks(h: {

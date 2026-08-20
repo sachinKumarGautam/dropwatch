@@ -26,6 +26,7 @@ async function toEvent(deps: Deps, row: AlertRow): Promise<AlertEvent> {
     competitors: [],
     productTitle: product?.title ?? "Product",
     url: product?.url ?? "",
+    dropwatchUrl: deps.cfg.appUrl ? `${deps.cfg.appUrl}/product/?id=${row.productId}` : null,
     createdAt: row.createdAt,
   };
 }

@@ -33,6 +33,7 @@ function ev(over: Partial<AlertEvent> = {}, effInstant = 6100000): AlertEvent {
     competitors: [],
     productTitle: "Samsung Galaxy S24 Ultra",
     url: "https://amazon.in/dp/X",
+    dropwatchUrl: "https://x.github.io/dropwatch/product/?id=p1",
     createdAt: NOW.toISOString(),
     ...over,
   };

@@ -238,7 +238,8 @@ export interface AlertEvent {
   baseline: Paise | null; // effective price when added, for the % deviation line
   competitors: { merchant: string; url: string; price: Paise | null }[];
   productTitle: string;
-  url: string;
+  url: string; // retailer URL
+  dropwatchUrl: string | null; // DropWatch product page
   createdAt: IsoTs;
 }
 

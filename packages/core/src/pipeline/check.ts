@@ -274,6 +274,7 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
     competitors: competitors.slice(0, 5).map((c) => ({ merchant: c.merchant, url: c.url, price: c.price })),
     productTitle: extracted.title || product.title || "Product",
     url: product.url,
+    dropwatchUrl: cfg.appUrl ? `${cfg.appUrl}/product/?id=${productId}` : null,
     createdAt: nowIso,
   };
 

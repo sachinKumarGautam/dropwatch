@@ -20,6 +20,7 @@ export interface Config {
     baseUrl?: string;
   };
   defaultPincode: string | null;
+  appUrl: string | null;
   minimalLlm: boolean;
   disableLlmExtract: boolean;
   thresholds: { immediate: number; digest: number };
@@ -91,6 +92,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       baseUrl: nullable(env.OPENAI_BASE_URL) ?? undefined,
     },
     defaultPincode: nullable(env.DEFAULT_PINCODE) ?? nullable(env.USER_PINCODE),
+    appUrl: (nullable(env.APP_URL) ?? "").replace(/\/$/, "") || null,
     minimalLlm: bool(env.MINIMAL_LLM, true),
     disableLlmExtract: bool(env.DISABLE_LLM_EXTRACT, false),
     thresholds: {

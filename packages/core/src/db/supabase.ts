@@ -23,11 +23,12 @@ import type {
   ProductStats,
   TrackedProductRow,
 } from "../types.js";
-import type {
-  CompetitorMatchRow,
-  Db,
-  FingerprintSend,
-  OfferDiff,
+import {
+  OFFER_STALE_MS,
+  type CompetitorMatchRow,
+  type Db,
+  type FingerprintSend,
+  type OfferDiff,
 } from "./interface.js";
 
 const md5 = (s: string) => createHash("md5").update(s).digest("hex");
@@ -370,12 +371,13 @@ export function createDb(cfg: { url: string; serviceRoleKey: string }): Db {
         if (error) throw new Error(`DB upsertOffers: ${error.message}`);
       }
 
-      const disappearedHashes = [...beforeHashes].filter((h) => !seen.has(h));
-      if (disappearedHashes.length > 0) {
-        const ids = before
-          .filter((o) => disappearedHashes.includes(md5(o.rawText)))
-          .map((o) => o.id);
-        await sb.from("offers").update({ active: false }).in("id", ids);
+      // Deactivate only offers missing this run AND last seen beyond the grace window.
+      const cutoffIso = new Date(Date.now() - OFFER_STALE_MS).toISOString();
+      const staleGone = before.filter(
+        (o) => !seen.has(md5(o.rawText)) && o.lastSeenAt < cutoffIso,
+      );
+      if (staleGone.length > 0) {
+        await sb.from("offers").update({ active: false }).in("id", staleGone.map((o) => o.id));
       }
 
       const afterRows = must(
@@ -384,10 +386,7 @@ export function createDb(cfg: { url: string; serviceRoleKey: string }): Db {
       ) as any[];
       const current = afterRows.map(toOffer);
       const appeared = current.filter((o) => !beforeHashes.has(md5(o.rawText)));
-      const disappeared = before.filter((o) =>
-        disappearedHashes.includes(md5(o.rawText)),
-      );
-      return { appeared, disappeared, current };
+      return { appeared, disappeared: staleGone, current };
     },
     async getActiveOffers(productId) {
       const rows = must(

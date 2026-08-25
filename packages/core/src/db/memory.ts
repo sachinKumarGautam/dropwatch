@@ -26,6 +26,7 @@ import type {
 } from "../types.js";
 import {
   computeStats,
+  OFFER_STALE_MS,
   type CompetitorMatchRow,
   type Db,
   type FingerprintSend,
@@ -182,9 +183,11 @@ export function createMemoryDb(opts: MemoryDbOptions = {}): Db {
         }
       }
       const disappeared: Offer[] = [];
+      const cutoff = now().getTime() - OFFER_STALE_MS;
       for (const o of offers) {
         if (o.productId !== productId) continue;
-        if (o.active && !seenHashes.has(md5(o.rawText))) {
+        // Only deactivate an offer once it's been missing for longer than the grace window.
+        if (o.active && !seenHashes.has(md5(o.rawText)) && Date.parse(o.lastSeenAt) < cutoff) {
           o.active = false;
           disappeared.push(o);
         }

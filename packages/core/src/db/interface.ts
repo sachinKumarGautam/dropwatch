@@ -42,6 +42,10 @@ export interface OfferDiff {
   current: Offer[];
 }
 
+// Keep an offer "active" this long after it was last seen, so a single scrape that
+// misses the offers block doesn't make the effective price flicker.
+export const OFFER_STALE_MS = 36 * 3_600_000;
+
 export interface FingerprintSend {
   sentAt: IsoTs;
   effectiveInstant: Paise;

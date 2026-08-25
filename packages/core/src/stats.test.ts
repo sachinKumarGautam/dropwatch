@@ -9,6 +9,7 @@ function baseInput(over: Partial<DeriveInput> = {}): DeriveInput {
     stats: makeStats(),
     latest: makeExtracted({ price: 8000000, mrp: 9000000 }),
     prevLatest: null,
+    prevEffective: null,
     history72h: [],
     offerDiff: { appeared: [], disappeared: [] },
     best: makeEff({ effectiveInstant: 8000000 }),
@@ -22,16 +23,31 @@ function baseInput(over: Partial<DeriveInput> = {}): DeriveInput {
 }
 
 describe("deriveSignals", () => {
-  it("fires all_time_low + effective ATL and NOT price_error on a genuine low", () => {
+  it("fires all_time_low + effective ATL on a genuine DROP, not price_error", () => {
     const sig = deriveSignals(
       baseInput({
         latest: makeExtracted({ price: 7290000, mrp: 9000000 }),
         best: makeEff({ effectiveInstant: 7000000 }),
+        prevLatest: { price: 8000000, inStock: true, checkedAt: "2026-08-15T04:00:00Z" },
+        prevEffective: 8000000,
       }),
     );
     expect(hasSignal(sig, "all_time_low")).toBe(true);
     expect(hasSignal(sig, "eff_all_time_low")).toBe(true);
     expect(hasSignal(sig, "price_error")).toBe(false);
+  });
+
+  it("does NOT fire all-time-low when the price is flat at its low (no drop)", () => {
+    const sig = deriveSignals(
+      baseInput({
+        latest: makeExtracted({ price: 7290000 }),
+        best: makeEff({ effectiveInstant: 7000000 }),
+        prevLatest: { price: 7290000, inStock: true, checkedAt: "2026-08-15T04:00:00Z" }, // same price
+        prevEffective: 7000000,
+      }),
+    );
+    expect(hasSignal(sig, "all_time_low")).toBe(false);
+    expect(hasSignal(sig, "eff_all_time_low")).toBe(false);
   });
 
   it("fake_mrp fires on inflated MRP and suppresses mrp_discount_display", () => {

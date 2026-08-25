@@ -114,6 +114,7 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
   const prevLatest = recent[0]
     ? { price: recent[0].price, inStock: recent[0].inStock, checkedAt: recent[0].checkedAt }
     : null;
+  const prevEffective = recent[0]?.effectiveInstant ?? null;
   const history72 = await db.pointsSince(
     productId,
     new Date(t.getTime() - 72 * 3_600_000).toISOString(),
@@ -231,6 +232,7 @@ export async function checkProduct(deps: Deps, productId: string): Promise<Check
     stats,
     latest: extracted,
     prevLatest,
+    prevEffective,
     history72h: history72.map((p) => ({ price: p.price, checkedAt: p.checkedAt })),
     offerDiff,
     best,

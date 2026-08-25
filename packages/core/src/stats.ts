@@ -23,6 +23,7 @@ export interface DeriveInput {
   stats: ProductStats;
   latest: ExtractedProduct;
   prevLatest: { price: Paise; inStock: boolean; checkedAt: string } | null;
+  prevEffective: Paise | null;
   history72h: Array<{ price: Paise; checkedAt: string }>;
   offerDiff: { appeared: Offer[]; disappeared: Offer[] };
   best: EffectivePrice;
@@ -46,18 +47,21 @@ export function deriveSignals(input: DeriveInput): Signal[] {
   const eff = best.effectiveInstant;
   const median = stats.median90d;
 
+  // A "low" is only news when the price actually DROPPED this check — a price that has
+  // merely sat at its all-time low forever is trivially "at its low" and must not alert.
+  const stickerDropped = input.prevLatest != null && price < input.prevLatest.price;
+  const effDropped = input.prevEffective != null && eff < input.prevEffective;
+
   // ── sticker lows ──
-  if (stats.allTimeLow != null && price <= stats.allTimeLow * 1.02) {
+  if (stickerDropped && stats.allTimeLow != null && price <= stats.allTimeLow * 1.02) {
     out.push({
       kind: "all_time_low",
       value: price,
-      detail:
-        price <= stats.allTimeLow
-          ? "New all-time low"
-          : "Within 2% of all-time low",
+      detail: price <= stats.allTimeLow ? "New all-time low" : "Within 2% of all-time low",
     });
   }
   if (
+    stickerDropped &&
     stats.low90d != null &&
     price <= stats.low90d &&
     median != null &&
@@ -66,6 +70,7 @@ export function deriveSignals(input: DeriveInput): Signal[] {
     out.push({ kind: "low_90d", value: price, detail: "New 90-day low, ≥5% below median" });
   }
   if (
+    stickerDropped &&
     stats.low180d != null &&
     price <= stats.low180d &&
     median != null &&
@@ -93,10 +98,10 @@ export function deriveSignals(input: DeriveInput): Signal[] {
     }
   }
 
-  // ── effective lows (signature) ──
-  if (stats.effAllTimeLow != null && eff <= stats.effAllTimeLow) {
+  // ── effective lows (signature) — only on an actual effective-price drop ──
+  if (effDropped && stats.effAllTimeLow != null && eff <= stats.effAllTimeLow) {
     out.push({ kind: "eff_all_time_low", value: eff, detail: "New effective all-time low (card-adjusted)" });
-  } else if (stats.effLow90d != null && eff <= stats.effLow90d) {
+  } else if (effDropped && stats.effLow90d != null && eff <= stats.effLow90d) {
     out.push({ kind: "eff_low_90d", value: eff, detail: "New effective 90-day low (card-adjusted)" });
   }
 
